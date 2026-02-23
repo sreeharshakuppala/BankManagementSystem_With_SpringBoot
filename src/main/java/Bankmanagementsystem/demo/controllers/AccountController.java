@@ -4,18 +4,12 @@
 package Bankmanagementsystem.demo.controllers;
 
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.DeleteMapping;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 import Bankmanagementsystem.demo.models.Account;
 import Bankmanagementsystem.demo.service.AccountService;
 
-
-
+import java.util.List;
 
 
 @RestController
@@ -86,6 +80,25 @@ public class AccountController
            return ResponseEntity.status(404).body(accountNumber + " " + ":Account not Found");
        }
        return ResponseEntity.ok(accountService.deleteAccount(accountNumber) +":" + "Account Successfully deleted");
+   }
+
+   @GetMapping("/balance")
+   public ResponseEntity<String> accountBalance(@RequestParam Long accountNumber)
+   {
+       Account account = accountService.getAccount(accountNumber);
+       account.getbalance();
+       if(account == null)
+       {
+           return ResponseEntity.status(404).body(accountNumber + " " +":Account Not Found");
+       }
+       return ResponseEntity.ok("AccountNumber:"+ account.getAccountNumber() + "Account balance" + account.getbalance());
+
+   }
+
+   @GetMapping("/allaccountsbalance")
+    public Double bankBalance( )
+   {
+       return accountService.getTotalBalance();
    }
 
 }
