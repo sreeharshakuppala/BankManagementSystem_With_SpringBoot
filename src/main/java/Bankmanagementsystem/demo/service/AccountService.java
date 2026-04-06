@@ -5,25 +5,51 @@ package Bankmanagementsystem.demo.service;
 
 import java.util.*;
 
+import Bankmanagementsystem.demo.models.Transactions;
+import Bankmanagementsystem.demo.repository.AccountRepository;
+import Bankmanagementsystem.demo.repository.TransactionsRepository;
+import jakarta.transaction.Transactional;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 
 import Bankmanagementsystem.demo.models.Account;
 
+import java.util.Optional;
+
 @Service
-public class AccountService {
+public class AccountService
+    {
 
-    private Map<Long, Account> accountStorage = new HashMap<>();
-//   private List<Long> totalbalance = new ArrayList<Long>();
 
-    public String createAccount(Account account) {
-        accountStorage.put(account.getAccountNumber(), account);
-//        totalbalance.add(account.getAccountNumber());
-        return "Account created successfullly!";
+    private final AccountRepository accountRepository;
+    private final TransactionsRepository transactionsRepository;
 
+//    @Autowired
+//    AccountRepository accountRepository2;
+//
+//
+
+    public AccountService(AccountRepository accountRepository, TransactionsRepository transactionsRepository) {
+        this.accountRepository = accountRepository;
+        this.transactionsRepository = transactionsRepository;
     }
 
-    public List<Account> getAllAccounts() {
-        return accountStorage.values().stream().toList();
+
+    public Account createAccount(Account account)
+    {
+
+
+        Account saved_account = accountRepository.save(account);
+
+        return saved_account;
+    }
+
+
+    public List<Account> getAllAccounts()
+    {
+       List<Account> accounts = accountRepository.findAll();
+        return accounts;
     }
 
     public Double getTotalBalance() {
@@ -41,11 +67,12 @@ public class AccountService {
 //        }
 
         double totalamount = 0;
-        List<Account> accounts = (accountStorage.values().stream().toList());
+        List<Account> accounts = accountRepository.findAll().stream().toList();
         int i = 0;
-        while (i < accounts.size()) {
-            Account account = accounts.get(i);
-            totalamount += account.getbalance();
+        while (i < accounts.size())
+        {
+//            Account account = accounts.get(i);
+            totalamount += accounts.get(i).getBalance();
             i++;
         }
 //        for(Account account : accounts) {
@@ -58,49 +85,87 @@ public class AccountService {
 
     public Account getAccount(Long accountNumber)
     {
-        return accountStorage.get(accountNumber);
+
+        return accountRepository.findById(accountNumber).orElse(null);
 
     }
 
-    public String depositAmount(Long accountNumber, double amount) {
+    @Transactional
+    public Account depositAmount(Long accountNumber, double amount) {
 
-        Account account = accountStorage.get(accountNumber);
+        Optional<Account> optionalAccount = Optional.of(accountRepository.findById(accountNumber).orElseThrow(() -> new RuntimeException("Not FOund")));
 
-        if (account == null) {
-            return "Account Not Found";
+        if (optionalAccount.isEmpty())
+        {
+            return null;
         }
 
-        if (amount <= 0) {
-            return "Invalid deposit amount";
+        if (amount <= 0)
+        {
+            return null;
         }
-        double newBalance = account.getbalance() + amount;
-        account.setBalance(newBalance);
 
-        return "Deposited " + amount + "Successfully. New Balance: " + newBalance;
+        Account account = optionalAccount.get();
+
+      Transactions transactions = new Transactions();
+//        transactions.setId(GenerationType.AUTO.ordinal());
+        transactions.setAccountNumber(accountNumber);
+       transactions.setBalance(amount);
+       transactions.setType("deposit");
+        transactionsRepository.save(transactions);
+
+
+        account.setBalance(account.getBalance() + amount);
+        return accountRepository.save(account);
 
     }
 
-    public String withdrawAmount(Long accountNumber, double amount) {
-        Account account = accountStorage.get(accountNumber);
+    @Transactional
+    public Account withdrawAmount(Long accountNumber, double amount) {
+        Optional<Account> optionalAccount = accountRepository.findById(accountNumber);
+//                .orElseThrow((() -> new RuntimeException("Not Found"));
 
-        if (account == null) {
-            return "Account Not Found";
+        if (optionalAccount.isEmpty()) {
+            return null;
         }
-        if (amount <= 0) {
-            return "Invalid withdraw amount";
-        }
-        double currentBalance = account.getbalance() - amount;
-        account.setBalance(currentBalance);
+        Account account = optionalAccount.get();
 
-        return "withdraw " + amount + "Successfully. New Balance: " + currentBalance;
+        if (account.getBalance() < amount)
+        {
+            return null;
+        }
+        Transactions transactions = new Transactions();
+
+        transactions.setAccountNumber(accountNumber);
+//        transactions.setBalance(GenerationType.AUTO.ordinal());
+        transactions.setBalance(amount);
+        transactions.setType("withdraw");
+        transactionsRepository.save(transactions);
+
+        account.setBalance(account.getBalance() - amount);
+        return accountRepository.save(account);
     }
 
-
-    public String deleteAccount(Long accountNumber)
+    public List<Transactions> TransactionsList (Long accountNumber)
     {
 
-        Account account = accountStorage.remove(accountNumber);
-        return "Account Successfully deleted";
+          List<Transactions> optional = transactionsRepository.findByAccountNumber(accountNumber);
+
+
+
+
+        return optional;
+    }
+
+    public boolean deleteAccount(Long accountNumber)
+    {
+
+        if (!accountRepository.existsById(accountNumber))
+        {
+            return false;
+        }
+        accountRepository.deleteById(accountNumber);
+        return true;
 
     }
 
